@@ -1,0 +1,10 @@
+Task 5:
+How Request Flows:
+
+URL: User enters url or an address of resource.
+
+Server looks in the urls.py to match a pattern. To Know the exact route or path, user has requested.
+
+After matching the path, it hands over the request to view to . The view is simply a python function which performs programmed task like fetching data from database, running business logic or deciding what information is needed or required.
+
+The view formats the data often wrapped inside html file. The server sends this formateed response as HTTP resonse to browser. Browser then renders this response and shows on screen.

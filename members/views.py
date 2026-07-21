@@ -4,19 +4,24 @@ from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import Project
-from django.contrib.auth.models import User
-from .models import Task
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer
+
+from .models import Task,User
+from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
 from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
+from .Permissions import IsAdmin,IsEmployee
+
+User = get_user_model()
 
 
 # Task 2
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def project_list(request):
-    projects=Project.objects.all()
+    filtered_projects=Project.objects.filter(company=request.user.company)
     
-    serializer=ProjectSerializer(projects, many=True)
+    
+    serializer=ProjectSerializer(filtered_projects, many=True)
     return Response({"Success":True,
                      "data":serializer.data
 
@@ -86,15 +91,17 @@ def delete_project(request,id):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def project_list(request):
-    projects=Task.objects.all()
+def get_task(request):
+    filtered_tasks = Task.objects.filter(company=request.user.company)
 
-    serializer=TaskSerializer(projects,many=True)
-    return Response({"Success":True,
-                     "data":serializer.data
+    serializer = TaskSerializer(filtered_tasks, many=True)
 
-    },
-    status=200
+    return Response(
+        {
+            "Success": True,
+            "data": serializer.data
+        },
+        status=200
     )
 
 @api_view(["POST"])
@@ -209,6 +216,62 @@ def login(request):
         status=400
     )
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated,IsAdmin])
+def create_task(request):
+    serialization=TaskSerializer(data=request.data)
+    if serialization.is_valid():
+        serialization.save()
+        return Response({"Succuess":True,
+                         "data":serialization.data},
+                         status=201)
+    return Response({"Succuess":False,
+                     "data":serialization.errors},status=400)
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def update_task(request, id):
+    task = Task.objects.get(id=id)
+
+    serializer = TaskSerializer(
+        task,
+        data=request.data,
+        partial=True
+    )
+
+    if serializer.is_valid():
+        serializer.save()
+
+        return Response(
+            {
+                "Success": True,
+                "data": serializer.data
+            },
+            status=200
+        )
+
+    return Response(
+        {
+            "Success": False,
+            "data": serializer.errors
+        },
+        status=400
+    )
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated,IsAdmin])
+def delete_task(request,id):
+    task=Task.objects.get(id=id)
+    task.delete()
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated,IsEmployee])
+def show_tasks(request,id):
+    task=Task.objects.get(id=id)
+    serializer=TaskSerializer(task)
+    return Response({"Succuess":True,
+                     "data":serializer.data},
+                     status=200)
+ 
 
             
         

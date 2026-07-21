@@ -36,7 +36,7 @@ def project_list(request):
 @permission_classes([IsAuthenticated])
 def create_project(request):
     serializer = ProjectSerializer(data=request.data)
-    # Validaates Whether The Recieved data satisfies Model Requirements
+    
     if serializer.is_valid():
         serializer.save()
         return Response({"Success":True,

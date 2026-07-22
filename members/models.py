@@ -3,11 +3,14 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Company(models.Model):
-    name = models.CharField(max_length=100)
+    
     company_choices=[("G","Google"),
                      ("M","Microsoft"),
                      ("A","Amazon")]
-    company_name=models.CharField(choices=company_choices)
+    company_name=models.CharField(max_length=25,choices=company_choices)
+
+    def __str__(self):
+        return self.company_name
     
 
 
@@ -25,6 +28,10 @@ class Project(models.Model):
     description=models.CharField(max_length=500)
     start_date=models.IntegerField()
     status=models.CharField(max_length=2,choices=status_choices)
+    company_projects=models.ForeignKey(Company,on_delete=models.CASCADE,null=True)
+
+    def __str__(self):
+        return self.name
    
 
 class Task(models.Model):
@@ -35,22 +42,25 @@ class Task(models.Model):
                     ]
     name=models.CharField(max_length=100)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,null=True,blank=True)
+    company_tasks=models.ForeignKey(Company,on_delete=models.CASCADE,null=True,blank=True)
+    user_task=models.ForeignKey("User",on_delete=models.CASCADE,null=True)
     description=models.CharField(max_length=100)
     start_date=models.IntegerField()
     status=models.CharField(max_length=2,choices=status_choices)
 
+    def __str__(self):
+        return self.name
+    
+
 
 
     
-
-    
-    
-# Create your models here.
-
 class User(AbstractUser):
     Role_Choices=[("admin","Admin"),
                   ("employee","Empoyee"),
                   ("manager","Manager")]
     role=models.CharField(max_length=20,choices=Role_Choices)
-    company=models.ForeignKey(Company,on_delete=models.CASCADE,null=True,blank=True)
+    company = models.ForeignKey(Company,on_delete=models.CASCADE)
+    
+    
+    

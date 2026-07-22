@@ -24,7 +24,21 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("signup/", views.signup, name="signup"),
     path("login/", TokenObtainPairView.as_view(), name="login"),
-    path("projects/",views.project_list),
+    
     path('token/refresh/',TokenRefreshView.as_view(),name="token_refresh"),
-    path("tasks/", views.get_task, name="get_task")
-]
+    path("projects/", views.project_list, name="project_list"),
+    path("createprojects/", views.create_project, name="create_project"),
+    path("updateprojects/<int:id>/", views.update_project, name="update_project"),
+    path("deleteproject/<int:id>/", views.delete_project, name="delete_project"),
+    path("tasks/", views.get_task, name="get_task"),
+    path("createtasks/", views.create_task, name="create_task"),
+    path("updatetasks/<int:id>/", views.update_task, name="update_task"),
+    path("patchtasks/<int:id>/", views.partially_update_task, name="partially_update_task"),
+    path("deletetasks/<int:id>/", views.delete_task, name="delete_task"),
+    path("showtasks/<int:id>/", views.show_tasks, name="show_tasks"),
+    path("createusers/", views.create_users, name="create_users"),
+    path("deleteusers/<int:id>/", views.delete_users, name="delete_users"),
+    path("specificprojects/",views.get_company_specific_projects, name="company_projects"),
+    path("specifictasks/",views.get_company_specific_tasks,name="company_tasks"),
+            
+    ]

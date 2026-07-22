@@ -24,10 +24,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class AuthenticationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(min_length=8,write_only=True)
+    role = serializers.CharField()
 
     class Meta:
         model = User
-        fields = ["username", "password", "email"]
+        fields = ["username", "password", "email","role" ]
 
 class UserSerializer(serializers.ModelSerializer):
 

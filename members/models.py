@@ -61,6 +61,13 @@ class User(AbstractUser):
                   ("manager","Manager")]
     role=models.CharField(max_length=20,choices=Role_Choices)
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
+
+class AuditLog(models.Model):
+    user=models.CharField(max_length=30)
+    action=models.CharField(max_length=30)
+    timestamp=models.DateTimeField(auto_now=True)
+    related_object=models.CharField(max_length=30)
+    
     
     
     

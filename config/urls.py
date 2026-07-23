@@ -20,6 +20,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 from members import views
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("signup/", views.signup, name="signup"),

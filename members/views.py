@@ -3,7 +3,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Project,Task,User
+from .models import Project,Task,User,AuditLog
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.throttling import UserRateThrottle
+from rest_framework.decorators import throttle_classes
+
+# Ineriting LoginThrottle from UserRateThrottle
+class LoginThrottle(UserRateThrottle):
+    rate="10/min"
+    
+
+
 
 
 from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
@@ -19,9 +29,17 @@ from .Permissions import IsAdmin,IsEmployee
 @permission_classes([IsAuthenticated])
 def project_list(request):
     filtered_projects=Project.objects.filter(company_projects=request.user.company)
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Requested to give all projects")
+    audit.save()
+    audit.related_object("projects")
+    audit.save()
     
-    
+
     serializer=ProjectSerializer(filtered_projects, many=True)
+    
     return Response({"Success":True,
                      "data":serializer.data
 
@@ -36,7 +54,13 @@ def project_list(request):
 @permission_classes([IsAuthenticated,IsAdmin])
 def create_project(request):
     serializer = ProjectSerializer(data=request.data)
-    
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Requested to Create projects")
+    audit.save()
+    audit.related_object("Create Projects")
+    audit.save()
     if serializer.is_valid():
         serializer.save(company_projects=request.user.company)
         return Response({"Success":True,
@@ -44,7 +68,9 @@ def create_project(request):
 
     },
     status=200
-    )
+    ) 
+    
+
     
 
     return Response({
@@ -68,6 +94,14 @@ def update_project(request, id):
         )
 
         serializer = ProjectSerializer(project, data=request.data)
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("User Requested to Update Projects")
+        audit.save()
+        audit.related_object("Update Projects")
+        audit.save()
+
 
         if serializer.is_valid():
             serializer.save(company_projects=request.user.company)
@@ -98,7 +132,14 @@ def update_project(request, id):
 def delete_project(request,id):
     try:
      project=Project.objects.get(id=id,company_projects=request.user.company)
-     project.delete()
+     project.status("NS")
+     audit=AuditLog()
+     audit.user(f"User{request.user}")
+     audit.save()
+     audit.action("User Requested to delete Project")
+     audit.save()
+     audit.related_object("Delete Projects")
+     audit.save()
 
      return Response({"Success":True},status=200)
     except Project .DoesNotExist:
@@ -116,6 +157,13 @@ def delete_project(request,id):
 def get_task(request):
     
     filtered_tasks = Task.objects.filter(company_tasks=request.user.company)
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Requested to Give all Authorized Tasks")
+    audit.save()
+    audit.related_object("Give Tasks")
+    audit.save()
 
     serializer = TaskSerializer(filtered_tasks, many=True)
 
@@ -132,6 +180,13 @@ def get_task(request):
 @permission_classes([IsAuthenticated,IsAdmin])
 def create_task(request):
     serializer=TaskSerializer(data=request.data)
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Requested to create new Task")
+    audit.save()
+    audit.related_object("Create New Task")
+    audit.save()
     if serializer.is_valid():
         serializer.save(company_tasks=request.user.company)
         return Response({"Success":True,
@@ -153,6 +208,13 @@ def update_task(request, id):
             id=id,
             company_tasks=request.user.company
         )
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("User Requested to update task")
+        audit.save()
+        audit.related_object("Update Task")
+        audit.save()
 
         serializer = TaskSerializer(project, data=request.data)
 
@@ -184,14 +246,22 @@ def update_task(request, id):
             status=404
         )
 
-# Delete endpoint for Tasks
+# Delete endpoint for Tasks(Modified it by implementing Soft Delete)
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated,IsAdmin])
 def delete_task(request,id):
     try:
     
-     project=Task.objects.get(id=id,company_tasks=request.user.company)
-     project.delete()
+     task=Task.objects.get(id=id,company_tasks=request.user.company)
+     task.status("NS")
+     task.save()
+     audit=AuditLog()
+     audit.user(f"User{request.user}")
+     audit.save()
+     audit.action("User Requested to delete a task")
+     audit.save()
+     audit.related_object("Delete Task")
+     audit.save()
      return Response({"Success":True},status=200)
     except Task.DoesNotExist:
         return Response({"Success":False,
@@ -209,6 +279,13 @@ def partially_update_task(request, id):
             id=id,
             company_tasks=request.user.company
         )
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("User Requested to partially update a task")
+        audit.save()
+        audit.related_object("Partially Update Tasks")
+        audit.save()
 
         serializer = TaskSerializer(
             task,
@@ -249,6 +326,13 @@ def partially_update_task(request, id):
 
 def signup(request):
     serializer=AuthenticationSerializer(data=request.data)
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Signed Up")
+    audit.save()
+    audit.related_object("Signup")
+    audit.save()
     if serializer.is_valid():
      
      User.objects.create_user(username=serializer.validated_data["username"],
@@ -267,18 +351,40 @@ def signup(request):
     status=400
 )
 
-
-
-
-
-
-    
-
-
-
+@api_view(["POST"])
+@throttle_classes([LoginThrottle])
+def login(request):
+    username,password=request.data["username"],request.data["password"]
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("User Requested for Log In.")
+    audit.save()
+    audit.related_object("projects")
+    audit.save()
+   
+    user=authenticate(username=username,password=password)
+        # As it returns None if credentials are invalid
+    if user is None:
+            return Response({"Success":False,
+                            "details":"Credentials are invalid"},status=401)
+    else:
+            refresh=RefreshToken.for_user(user)
+            access=refresh.access_token
+            return Response({"Success":True,
+                             "access":access,
+                             "refresh":refresh},status=200)
+        
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def show_tasks(request,id):
+    audit=AuditLog()
+    audit.user(f"User{request.user}")
+    audit.save()
+    audit.action("Employee requested to show their assigned tasks")
+    audit.save()
+    audit.related_object("Show Assigned Tasks")
+    audit.save()
     if request.user.role=="employee": 
      
       task=Task.objects.filter(user_task=request.user)
@@ -295,11 +401,19 @@ def show_tasks(request,id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated,IsAdmin])
 def create_users(request):
+
     serializer=UserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response({"Success":True,
                         "data":serializer.data},status=201)
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("Admin Created User")
+        audit.save()
+        audit.related_object("Create User")
+        audit.save()
     return Response({"Success":False,
                      "data":serializer.errors},status=400)
 # allow Admins only to Delete Users(Task 2)
@@ -330,6 +444,13 @@ def get_company_specific_projects(request):
         return Response({"Success":True,
                         "data":serializer.data},
                         status=200)
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("Admin requested for Company Specific Projects")
+        audit.save()
+        audit.related_object("Get Specific Projects")
+        audit.save()
 
 # task 2 & 4 Module 7
 # Get Endpoint for Company Specific Task:
@@ -342,6 +463,13 @@ def get_company_specific_tasks(request):
         return Response({"Success":True,
                         "data":serializer.data},
                         status=200)
+        audit=AuditLog()
+        audit.user(f"User{request.user}")
+        audit.save()
+        audit.action("Admin Requested to get Specific Tasks")
+        audit.save()
+        audit.related_object("Get Specific Tasks")
+        audit.save()
     
 
 

@@ -22,7 +22,8 @@ class Project(models.Model):
     status_choices=[("CP", "Completed"),
                     ("NS","Not Started"),
                     ("IP","In Progress"),
-                    ("CA","Cancelled")
+                    ("CA","Cancelled"),
+                    ("D","Deleted")
                     ]
     name= models.CharField(max_length=100)
     description=models.CharField(max_length=500)
@@ -37,7 +38,8 @@ class Project(models.Model):
 class Task(models.Model):
     status_choices=[("CP", "Completed"),
                     ("NS","Not Started"),
-                    ("IP","In Progress")
+                    ("IP","In Progress"),
+                    ("D","Deleted")
                     
                     ]
     name=models.CharField(max_length=100)

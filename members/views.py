@@ -7,6 +7,17 @@ from .models import Project,Task,User,AuditLog
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
+import logging
+from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
+from django.contrib.auth import authenticate
+from tasks import send_welcome_email
+from .Permissions import IsAdmin,IsEmployee,IsManager
+
+
+
+logger=logging.getLogger('django')
+
+
 
 # Ineriting LoginThrottle from UserRateThrottle
 class LoginThrottle(UserRateThrottle):
@@ -16,21 +27,18 @@ class LoginThrottle(UserRateThrottle):
 
 
 
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
-from django.contrib.auth import authenticate
-
-from .Permissions import IsAdmin,IsEmployee
 
 
 
 
-# Task 2 Module 5
+
+# Task 2 Module 5 (Only Admins and Managers can aceess all the Projects)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated,IsManager,IsAdmin])
 def project_list(request):
     filtered_projects=Project.objects.filter(company_projects=request.user.company)
     audit=AuditLog()
-    audit.user(f"User{request.user}")
+    audit.user(f"User {request.user}")
     audit.save()
     audit.action("User Requested to give all projects")
     audit.save()
@@ -46,6 +54,7 @@ def project_list(request):
     },
     status=200
     )
+    
     
 
 
@@ -69,9 +78,6 @@ def create_project(request):
     },
     status=200
     ) 
-    
-
-    
 
     return Response({
         "Success":False,
@@ -81,7 +87,6 @@ def create_project(request):
     )
 
 # Task 4 & 5 Module 5 (Updating Resource & Response Format Consitency)
-
 
 # Task 3 Module 5
 @api_view(["PUT"])
@@ -132,7 +137,7 @@ def update_project(request, id):
 def delete_project(request,id):
     try:
      project=Project.objects.get(id=id,company_projects=request.user.company)
-     project.status("NS")
+     project.status("D")
      audit=AuditLog()
      audit.user(f"User{request.user}")
      audit.save()
@@ -153,7 +158,7 @@ def delete_project(request,id):
 
 # Get Endpoint for Tasks Task 1 Module 5
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated,IsAdmin,IsManager])
 def get_task(request):
     
     filtered_tasks = Task.objects.filter(company_tasks=request.user.company)
@@ -253,7 +258,7 @@ def delete_task(request,id):
     try:
     
      task=Task.objects.get(id=id,company_tasks=request.user.company)
-     task.status("NS")
+     task.status("D")
      task.save()
      audit=AuditLog()
      audit.user(f"User{request.user}")
@@ -326,6 +331,7 @@ def partially_update_task(request, id):
 
 def signup(request):
     serializer=AuthenticationSerializer(data=request.data)
+    email=request.data["email"]
     audit=AuditLog()
     audit.user(f"User{request.user}")
     audit.save()
@@ -334,6 +340,8 @@ def signup(request):
     audit.related_object("Signup")
     audit.save()
     if serializer.is_valid():
+     # using Tasks framework to send email as a background task
+     send_welcome_email.enqueue(email)
      
      User.objects.create_user(username=serializer.validated_data["username"],
                               email=serializer.validated_data["email"],
@@ -355,28 +363,37 @@ def signup(request):
 @throttle_classes([LoginThrottle])
 def login(request):
     username,password=request.data["username"],request.data["password"]
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("User Requested for Log In.")
-    audit.save()
-    audit.related_object("projects")
-    audit.save()
+    
    
     user=authenticate(username=username,password=password)
         # As it returns None if credentials are invalid
     if user is None:
             return Response({"Success":False,
                             "details":"Credentials are invalid"},status=401)
+            audit=AuditLog()
+            audit.user(f"User{request.user}")
+            audit.save()
+            audit.action("User Entred Invalid Credentials.")
+            audit.save()
+            audit.related_object("Login")
+            audit.save()
+    
     else:
             refresh=RefreshToken.for_user(user)
             access=refresh.access_token
             return Response({"Success":True,
                              "access":access,
                              "refresh":refresh},status=200)
+            audit=AuditLog()
+            audit.user(f"User{request.user}")
+            audit.save()
+            audit.action("User Requested for Log In.")
+            audit.save()
+            audit.related_object("LogIn")
+            audit.save()
         
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated,IsEmployee])
 def show_tasks(request,id):
     audit=AuditLog()
     audit.user(f"User{request.user}")
@@ -385,16 +402,15 @@ def show_tasks(request,id):
     audit.save()
     audit.related_object("Show Assigned Tasks")
     audit.save()
-    if request.user.role=="employee": 
+    
      
-      task=Task.objects.filter(user_task=request.user)
-      serializer=TaskSerializer(task,many=True)
+    task=Task.objects.filter(user_task=request.user)
+    serializer=TaskSerializer(task,many=True)
 
-      return Response({"Succuess":True,
+    return Response({"Succuess":True,
                      "data":serializer.data},
                      status=200)
-    else:
-        return Response("This Section Belongs to employee only.")
+    
       
 
  # Allow only Admins to Create Users(Task 2)

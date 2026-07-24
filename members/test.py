@@ -1,4 +1,5 @@
 from django.test import TestCase
+from rest_framework.test import APITestCase
 
 from .models import User,Company,Project
 class TenantTestCase(TestCase):
@@ -23,5 +24,49 @@ class TenantTestCase(TestCase):
         self.assertGreater(len(verify), 0)
         for verification in verify:
             self.assertEqual (verification["company_projects"],self.user1.company.id)
-                
-    
+
+# Writing Unit Test for Login Endpoint
+
+class LoginTest(TestCase):
+    def setUp(self):
+        self.login_endpoint="/login/"
+        self.data={"username":"ali",
+              "password":"123456789"}
+    def test_login(self):
+        response=self.client.post(self.login_endpoint,self.data)
+        self.assertEqual(response.status_code,200)
+
+# Writing Unit Test For Signup endpoint
+class SignupTest(TestCase):
+    def setUp(self):
+        self.signup_endpoint="/signup/"
+        self.data={"username":"huraira",
+               "password":"123456789",
+               "role":"employee",
+               "company":"G"}
+    def test_signup(self):
+        response=self.client.post(self.signup_endpoint,self.data)
+        self.assertEqual(response.status_code, 201)
+
+# Wriing ApI Test For Authorization
+class CheckAuthorization(APITestCase):
+
+    def setUp(self):
+        login_request = self.client.post(
+            "/login/",
+            {
+                "username": "ali",
+                "password": "123456789"
+            }
+        )
+
+        token = login_request.json()["access"]
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+
+    def test_admin_specific_projects(self):
+        response = self.client.get("/projects/2/")
+
+        self.assertEqual(response.status_code, 403)

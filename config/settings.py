@@ -110,6 +110,40 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+LOGGING={
+    'version':1,
+    'loggers':{
+        'django':{
+            'Handlers':['file'],
+            'LEVEL':'DEBUG'
+        }
+
+    },
+    'handlers':{
+        'file':{
+            'level':'DEBUG',
+            'filename':'logs/django.logs',
+            'class':'logging.FileHandler'
+        }
+
+    },
+    'formatters':{
+        'custom': {
+            'format':  '{name} {asctime} {levelname} :: {message}',
+            'style': '{',
+        }
+    }
+}
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'                 
+EMAIL_PORT = 587                              
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mymail@gmail.com'       
+EMAIL_HOST_PASSWORD = 'your_app_password'     
+DEFAULT_FROM_EMAIL = 'mymail@gmail.com'
+
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

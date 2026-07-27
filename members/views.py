@@ -206,7 +206,7 @@ def create_task(request):
 
 # PUt Endpoint for Tasks
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated, IsAdmin,IsManager])
 def update_task(request, id):
     try:
         project = Task.objects.get(

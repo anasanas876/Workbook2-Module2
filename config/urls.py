@@ -24,7 +24,7 @@ from members import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("signup/", views.signup, name="signup"),
-    path("login/", TokenObtainPairView.as_view(), name="login"),
+    path("login/", views.login, name="login"),
     
     path('token/refresh/',TokenRefreshView.as_view(),name="token_refresh"),
     path("projects/", views.project_list, name="project_list"),

@@ -10,7 +10,7 @@ from rest_framework.decorators import throttle_classes
 import logging
 from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
 from django.contrib.auth import authenticate
-from tasks import send_welcome_email
+
 from .Permissions import IsAdmin,IsEmployee,IsManager
 
 
@@ -253,7 +253,7 @@ def update_task(request, id):
 
 # Delete endpoint for Tasks(Modified it by implementing Soft Delete)
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated,IsAdmin])
+@permission_classes([IsAuthenticated,IsAdmin,IsManager])
 def delete_task(request,id):
     try:
     
@@ -277,7 +277,7 @@ def delete_task(request,id):
 
 # PATCH Endpoint for Tasks
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([IsAuthenticated, IsAdmin,IsManager])
 def partially_update_task(request, id):
     try:
         task = Task.objects.get(
@@ -331,7 +331,7 @@ def partially_update_task(request, id):
 
 def signup(request):
     serializer=AuthenticationSerializer(data=request.data)
-    email=request.data["email"]
+    
     audit=AuditLog()
     audit.user(f"User{request.user}")
     audit.save()
@@ -341,7 +341,7 @@ def signup(request):
     audit.save()
     if serializer.is_valid():
      # using Tasks framework to send email as a background task
-     send_welcome_email.enqueue(email)
+     
      
      User.objects.create_user(username=serializer.validated_data["username"],
                               email=serializer.validated_data["email"],
@@ -382,8 +382,8 @@ def login(request):
             refresh=RefreshToken.for_user(user)
             access=refresh.access_token
             return Response({"Success":True,
-                             "access":access,
-                             "refresh":refresh},status=200)
+                             "access":str(access),
+                             "refresh":str(refresh)},status=200)
             audit=AuditLog()
             audit.user(f"User{request.user}")
             audit.save()
@@ -449,44 +449,10 @@ def delete_users(request,id):
                            )
 
 
-# Task 2 & 4 Module 7 Get Endpoint for Company Specific Projects:
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_company_specific_projects(request):
-    
-        projects=Project.objects.filter(company_projects=request.user.company)
-        serializer=ProjectSerializer(projects,many=True)
-        return Response({"Success":True,
-                        "data":serializer.data},
-                        status=200)
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("Admin requested for Company Specific Projects")
-        audit.save()
-        audit.related_object("Get Specific Projects")
-        audit.save()
 
-# task 2 & 4 Module 7
-# Get Endpoint for Company Specific Task:
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_company_specific_tasks(request):
-    
-        tasks=Task.objects.filter(company_tasks=request.user.company)
-        serializer=TaskSerializer(tasks,many=True)
-        return Response({"Success":True,
-                        "data":serializer.data},
-                        status=200)
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("Admin Requested to get Specific Tasks")
-        audit.save()
-        audit.related_object("Get Specific Tasks")
-        audit.save()
-    
+
+
 
 
 

@@ -34,6 +34,8 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -49,7 +51,7 @@ INSTALLED_APPS = [
 ]
 
 AUTH_USER_MODEL = "members.User"
-ASGI_APPLICATION = "djangoproject.asgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -152,7 +154,14 @@ EMAIL_HOST_USER = 'mymail@gmail.com'
 EMAIL_HOST_PASSWORD = 'your_app_password'     
 DEFAULT_FROM_EMAIL = 'mymail@gmail.com'
 
-
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

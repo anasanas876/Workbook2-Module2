@@ -48,7 +48,7 @@ Open Terminal on your device.
 
 Run the following command
 ```bash
-git clone <repository-url>
+git clone https://github.com/anasanas876/Workbook2-Module2.git
 ```
 
 Move into the project directory.

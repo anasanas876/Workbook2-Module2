@@ -2,5 +2,5 @@ from django.urls import path
 from .consumer import MyConsumer
 
 websocket_urlpatterns = [
-    path("ws/test/", MyConsumer.as_asgi()),
+    path("ws/test/<str:group_name>/", MyConsumer.as_asgi()),
 ]

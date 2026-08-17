@@ -13,9 +13,14 @@ class Company(models.Model):
         return self.company_name
     
 
+class Message(models.Model):
+    sender=models.ForeignKey("User",on_delete=models.CASCADE)
+    content=models.CharField(max_length=1000)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    room=models.ForeignKey("Room",on_delete=models.CASCADE)
 
-    
-
+class Room(models.Model):
+    room_name=models.CharField(max_length=100)
 
 
 class Project(models.Model):
@@ -33,7 +38,10 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
-   
+
+class Note(models.Model):
+    note=models.CharField(max_length=500)
+    workspace=models.ForeignKey(Room,on_delete=models.CASCADE)
 
 class Task(models.Model):
     status_choices=[("CP", "Completed"),

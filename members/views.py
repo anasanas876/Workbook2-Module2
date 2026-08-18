@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
 import logging
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer
+from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer
 from django.contrib.auth import authenticate
 
 from .Permissions import IsAdmin,IsEmployee,IsManager
@@ -447,6 +447,20 @@ def delete_users(request,id):
                            "data":"User does not exist"},status=404
 
                            )
+
+@api_view(["GET"])
+def get_rooms(request):
+
+    rooms = request.user.room.all()
+
+    serializer = RoomSerializer(rooms, many=True)
+
+    return Response({
+        "Success": True,
+        "data": serializer.data
+    }, status=200)
+
+
 
 
 

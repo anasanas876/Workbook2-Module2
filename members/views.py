@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
 import logging
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer
+from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer,NoteSerializer
 from django.contrib.auth import authenticate
 
 from .Permissions import IsAdmin,IsEmployee,IsManager
@@ -459,6 +459,29 @@ def get_rooms(request):
         "Success": True,
         "data": serializer.data
     }, status=200)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_note(request):
+    serializer=NoteSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"Success":True,
+                         "response":"Note created successfully"},status=201)
+    else:
+        return Response({"Success":False,
+                         "resonse":"Invalid data sent"},status=400)
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_note(request):
+    serializer=NoteSerializer(data=request.data)
+    if serializer.is_valid():
+
+        message=Notes.objects.filter(notes_id=request.user.data.id)
+        message=serializer
+        message.save()
+        
+    
 
 
 

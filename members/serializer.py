@@ -40,4 +40,8 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model=Room
         fields="__all__"
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Notes
+        fields="__all__"
                 

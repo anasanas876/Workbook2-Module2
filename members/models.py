@@ -78,6 +78,15 @@ class AuditLog(models.Model):
     timestamp=models.DateTimeField(auto_now=True)
     related_object=models.CharField(max_length=30)
     
-    
+class WorkSpace(models.Model):
+    name=models.CharField(max_length=50)
+
+class Notes(models.Model):
+    title=models.CharField(max_length=100)
+    content=models.TextField()
+    workspace=models.ForeignKey(WorkSpace,on_delete=models.CASCADE)
+    room=models.ForeignKey(Room,on_delete=models.CASCADE)
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    message=models.ForeignKey(Message,on_delete=models.CASCADE)
     
     

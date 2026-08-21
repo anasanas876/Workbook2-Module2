@@ -45,3 +45,7 @@ class NoteSerializer(serializers.ModelSerializer):
         model=Notes
         fields="__all__"
                 
+class VersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=VersionHistory
+        fields="__all__"

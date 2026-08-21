@@ -93,3 +93,29 @@ class MyConsumer(AsyncWebsocketConsumer):
                 "message": message
             })
         )
+
+
+    async def user_joined(self, event):
+
+        await self.send(
+
+            text_data=json.dumps({
+
+                "type": "user_joined",
+                "user_id": event["user_id"],
+                "username": event["username"
+                                  }
+
+# Writing function to check offline 
+async def user_left(self, event):
+
+        await self.send(
+
+            text_data=json.dumps({
+                "type": "user_left",
+                  "user_id": event["user_id"],
+                "username": event["username"]
+
+            })
+
+        )

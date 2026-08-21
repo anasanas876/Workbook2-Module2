@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
 import logging
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer,NoteSerializer
+from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer,NoteSerializer, VersionSerializer
 from django.contrib.auth import authenticate
 
 from .Permissions import IsAdmin,IsEmployee,IsManager
@@ -480,7 +480,13 @@ def update_note(request):
         message=Notes.objects.filter(notes_id=request.user.data.id)
         message=serializer
         message.save()
-        
+
+@api_view(["POST"])
+def savehistory(request):
+    serializer=VersionSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+
     
 
 

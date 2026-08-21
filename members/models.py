@@ -89,4 +89,8 @@ class Notes(models.Model):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
     message=models.ForeignKey(Message,on_delete=models.CASCADE)
     
-    
+
+class VersionHistory(models.Model):
+    notes=models.ForeignKey(Notes,on_delete=models.CASCADE)
+    title=models.CharField()
+    content=models.TextField()

@@ -1,296 +1,252 @@
+
 from django.shortcuts import render
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Project,Task,User,AuditLog
+from .models import Project, Task, User, Room, Notes, VersionHistory,Company,WorkSpace
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
-import logging
-from .serializer import ProjectSerializer, TaskSerializer, AuthenticationSerializer,UserSerializer,RoomSerializer,NoteSerializer, VersionSerializer
+from .serializer import (
+    ProjectSerializer,
+    TaskSerializer,
+    AuthenticationSerializer,
+    UserSerializer,
+    RoomSerializer,
+    NoteSerializer,
+    VersionSerializer,
+    CompanySerializer,
+    WorkSpaceSerializer
+)
 from django.contrib.auth import authenticate
 
-from .Permissions import IsAdmin,IsEmployee,IsManager
+from .Permissions import IsAdmin, IsEmployee, IsManager
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
-
-
-logger=logging.getLogger('django')
-
-
-
-# Ineriting LoginThrottle from UserRateThrottle
+# Login Throttle
 class LoginThrottle(UserRateThrottle):
-    rate="10/min"
-    
+    rate = "10/min"
 
 
 
-
-
-
-
-
-
-# Task 2 Module 5 (Only Admins and Managers can aceess all the Projects)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated,IsManager,IsAdmin])
+@permission_classes([IsAuthenticated, IsManager | IsAdmin])
 def project_list(request):
-    filtered_projects=Project.objects.filter(company_projects=request.user.company)
-    audit=AuditLog()
-    audit.user(f"User {request.user}")
-    audit.save()
-    audit.action("User Requested to give all projects")
-    audit.save()
-    audit.related_object("projects")
-    audit.save()
-    
 
-    serializer=ProjectSerializer(filtered_projects, many=True)
-    
-    return Response({"Success":True,
-                     "data":serializer.data
-
-    },
-    status=200
+    filtered_projects = Project.objects.filter(
+        company_projects=request.user.company
     )
-    
-    
 
-
-# Task 3,4,5 (Status Codes, Response Format) Module 5
-@api_view(["POST"])
-@permission_classes([IsAuthenticated,IsAdmin])
-def create_project(request):
-    serializer = ProjectSerializer(data=request.data)
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("User Requested to Create projects")
-    audit.save()
-    audit.related_object("Create Projects")
-    audit.save()
-    if serializer.is_valid():
-        serializer.save(company_projects=request.user.company)
-        return Response({"Success":True,
-                     "data":serializer.data
-
-    },
-    status=200
-    ) 
+    serializer = ProjectSerializer(filtered_projects, many=True)
 
     return Response({
-        "Success":False,
-        "data":serializer.errors
-    },
-    status=400
-    )
+        "Success": True,
+        "data": serializer.data
+    }, status=200)
 
-# Task 4 & 5 Module 5 (Updating Resource & Response Format Consitency)
 
-# Task 3 Module 5
+# Create Project
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def create_project(request):
+
+    serializer = ProjectSerializer(data=request.data)
+
+    if serializer.is_valid():
+        serializer.save(company_projects=request.user.company)
+
+        return Response({
+            "Success": True,
+            "data": serializer.data
+        }, status=201)
+
+    return Response({
+        "Success": False,
+        "data": serializer.errors
+    }, status=400)
+
+
+# Update Project
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated, IsAdmin])
 def update_project(request, id):
+
     try:
         project = Project.objects.get(
             id=id,
             company_projects=request.user.company
         )
 
-        serializer = ProjectSerializer(project, data=request.data)
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("User Requested to Update Projects")
-        audit.save()
-        audit.related_object("Update Projects")
-        audit.save()
-
-
-        if serializer.is_valid():
-            serializer.save(company_projects=request.user.company)
-
-            return Response(
-                {
-                    "Success": True,
-                    "data": serializer.data
-                },
-                status=200
-            )
-        return Response({"Success":False,
-                         "data":serializer.errors},status=400)
-
-        
-    except Project .DoesNotExist:
-        return Response(
-            {
-                "Success": False,
-                "message": "Project not found."
-            },
-            status=404
+        serializer = ProjectSerializer(
+            project,
+            data=request.data
         )
 
- # Creating End Point For Delete
+        if serializer.is_valid():
+            serializer.save(
+                company_projects=request.user.company
+            )
+
+            return Response({
+                "Success": True,
+                "data": serializer.data
+            }, status=200)
+
+        return Response({
+            "Success": False,
+            "data": serializer.errors
+        }, status=400)
+
+    except Project.DoesNotExist:
+        return Response({
+            "Success": False,
+            "message": "Project not found."
+        }, status=404)
+
+
+# Delete Project - Soft Delete
 @api_view(["DELETE"])
-@permission_classes([IsAdmin,IsAuthenticated])
-def delete_project(request,id):
+@permission_classes([IsAuthenticated, IsAdmin])
+def delete_project(request, id):
+
     try:
-     project=Project.objects.get(id=id,company_projects=request.user.company)
-     project.status("D")
-     audit=AuditLog()
-     audit.user(f"User{request.user}")
-     audit.save()
-     audit.action("User Requested to delete Project")
-     audit.save()
-     audit.related_object("Delete Projects")
-     audit.save()
-
-     return Response({"Success":True},status=200)
-    except Project .DoesNotExist:
-     return Response({"Succuess":False},
-                     status=403)
-
-
-
-
-
-
-# Get Endpoint for Tasks Task 1 Module 5
-@api_view(["GET"])
-@permission_classes([IsAuthenticated,IsAdmin,IsManager])
-def get_task(request):
-    
-    filtered_tasks = Task.objects.filter(company_tasks=request.user.company)
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("User Requested to Give all Authorized Tasks")
-    audit.save()
-    audit.related_object("Give Tasks")
-    audit.save()
-
-    serializer = TaskSerializer(filtered_tasks, many=True)
-
-    return Response(
-        {
-            "Success": True,
-            "data": serializer.data
-        },
-        status=200
-    )
-# Task 2 ,4&5  Module 5 (Response Formats and status code)
-# POST Endpoints for Tasks
-@api_view(["POST"])
-@permission_classes([IsAuthenticated,IsAdmin])
-def create_task(request):
-    serializer=TaskSerializer(data=request.data)
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("User Requested to create new Task")
-    audit.save()
-    audit.related_object("Create New Task")
-    audit.save()
-    if serializer.is_valid():
-        serializer.save(company_tasks=request.user.company)
-        return Response({"Success":True,
-                     "data":serializer.data
-
-    },
-    status=201
-    )
-    return Response ({"Success":False,
-                      "data":serializer.errors},
-                      status=400)
-
-# PUt Endpoint for Tasks
-@api_view(["PUT"])
-@permission_classes([IsAuthenticated, IsAdmin,IsManager])
-def update_task(request, id):
-    try:
-        project = Task.objects.get(
+        project = Project.objects.get(
             id=id,
+            company_projects=request.user.company
+        )
+
+        project.status = "D"
+        project.save()
+
+        return Response({
+            "Success": True
+        }, status=200)
+
+    except Project.DoesNotExist:
+        return Response({
+            "Success": False,
+            "message": "Project does not exist"
+        }, status=404)
+
+
+# Get Tasks
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsManager | IsAdmin])
+def get_task(request):
+
+    filtered_tasks = Task.objects.filter(
+        company_tasks=request.user.company
+    )
+
+    serializer = TaskSerializer(
+        filtered_tasks,
+        many=True
+    )
+
+    return Response({
+        "Success": True,
+        "data": serializer.data
+    }, status=200)
+
+
+# Create Task
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def create_task(request):
+
+    serializer = TaskSerializer(data=request.data)
+
+    if serializer.is_valid():
+        serializer.save(
             company_tasks=request.user.company
         )
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("User Requested to update task")
-        audit.save()
-        audit.related_object("Update Task")
-        audit.save()
 
-        serializer = TaskSerializer(project, data=request.data)
+        return Response({
+            "Success": True,
+            "data": serializer.data
+        }, status=201)
 
-        if serializer.is_valid():
-            serializer.save(company_tasks=request.user.company)
-
-            return Response(
-                {
-                    "Success": True,
-                    "data": serializer.data
-                },
-                status=200
-            )
-
-        return Response(
-            {
-                "Success": False,
-                "data": serializer.errors
-            },
-            status=400
-        )
-
-    except Task.DoesNotExist:
-        return Response(
-            {
-                "Success": False,
-                "message": "Task not found."
-            },
-            status=404
-        )
-
-# Delete endpoint for Tasks(Modified it by implementing Soft Delete)
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticated,IsAdmin,IsManager])
-def delete_task(request,id):
-    try:
-    
-     task=Task.objects.get(id=id,company_tasks=request.user.company)
-     task.status("D")
-     task.save()
-     audit=AuditLog()
-     audit.user(f"User{request.user}")
-     audit.save()
-     audit.action("User Requested to delete a task")
-     audit.save()
-     audit.related_object("Delete Task")
-     audit.save()
-     return Response({"Success":True},status=200)
-    except Task.DoesNotExist:
-        return Response({"Success":False,
-                         "data":"Task does not exist"},status=404)
-    
-    
+    return Response({
+        "Success": False,
+        "data": serializer.errors
+    }, status=400)
 
 
-# PATCH Endpoint for Tasks
-@api_view(["PATCH"])
-@permission_classes([IsAuthenticated, IsAdmin,IsManager])
-def partially_update_task(request, id):
+# Update Task
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated, IsAdmin | IsManager])
+def update_task(request, id):
+
     try:
         task = Task.objects.get(
             id=id,
             company_tasks=request.user.company
         )
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("User Requested to partially update a task")
-        audit.save()
-        audit.related_object("Partially Update Tasks")
-        audit.save()
+
+        serializer = TaskSerializer(
+            task,
+            data=request.data
+        )
+
+        if serializer.is_valid():
+            serializer.save(
+                company_tasks=request.user.company
+            )
+
+            return Response({
+                "Success": True,
+                "data": serializer.data
+            }, status=200)
+
+        return Response({
+            "Success": False,
+            "data": serializer.errors
+        }, status=400)
+
+    except Task.DoesNotExist:
+        return Response({
+            "Success": False,
+            "message": "Task not found."
+        }, status=404)
+
+
+# Delete Task - Soft Delete
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsAdmin | IsManager])
+def delete_task(request, id):
+
+    try:
+        task = Task.objects.get(
+            id=id,
+            company_tasks=request.user.company
+        )
+
+        task.status = "D"
+        task.save()
+
+        return Response({
+            "Success": True
+        }, status=200)
+
+    except Task.DoesNotExist:
+        return Response({
+            "Success": False,
+            "data": "Task does not exist"
+        }, status=404)
+
+
+# PATCH Task
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated, IsAdmin | IsManager])
+def partially_update_task(request, id):
+
+    try:
+        task = Task.objects.get(
+            id=id,
+            company_tasks=request.user.company
+        )
 
         serializer = TaskSerializer(
             task,
@@ -299,206 +255,339 @@ def partially_update_task(request, id):
         )
 
         if serializer.is_valid():
-            serializer.save(company_tasks=request.user.company)
-
-            return Response(
-                {
-                    "Success": True,
-                    "data": serializer.data
-                },
-                status=200
+            serializer.save(
+                company_tasks=request.user.company
             )
 
-        return Response(
-            {
-                "Success": False,
-                "data": serializer.errors
-            },
-            status=400
-        )
+            return Response({
+                "Success": True,
+                "data": serializer.data
+            }, status=200)
+
+        return Response({
+            "Success": False,
+            "data": serializer.errors
+        }, status=400)
 
     except Task.DoesNotExist:
-        return Response(
-            {
-                "Success": False,
-                "message": "Task not found."
-            },
-            status=404
+        return Response({
+            "Success": False,
+            "message": "Task not found."
+        }, status=404)
+
+
+# Signup
+@api_view(["POST"])
+def signup(request):
+
+    serializer = AuthenticationSerializer(
+        data=request.data
+    )
+
+    if serializer.is_valid():
+
+        User.objects.create_user(
+            username=serializer.validated_data["username"],
+            email=serializer.validated_data["email"],
+            password=serializer.validated_data["password"],
+            role=serializer.validated_data["role"],
+            company=serializer.validated_data["company"]
         )
 
-# Signup Endpoint Module 6
-@api_view(["POST"])
+        return Response({
+            "Success": True,
+            "data": serializer.data
+        }, status=201)
 
-def signup(request):
-    serializer=AuthenticationSerializer(data=request.data)
-    
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("User Signed Up")
-    audit.save()
-    audit.related_object("Signup")
-    audit.save()
-    if serializer.is_valid():
-     # using Tasks framework to send email as a background task
-     
-     
-     User.objects.create_user(username=serializer.validated_data["username"],
-                              email=serializer.validated_data["email"],
-                              password=serializer.validated_data["password"],
-                              role=serializer.validated_data["role"])
-     return Response({"Success":True,
-                     "data":serializer.data
-                     
-                     },status=201)
-    return Response(
-    {
+    return Response({
         "Success": False,
         "data": serializer.errors
-    },
-    status=400
-)
+    }, status=400)
 
+
+# Login
 @api_view(["POST"])
 @throttle_classes([LoginThrottle])
 def login(request):
-    username,password=request.data["username"],request.data["password"]
-    
-   
-    user=authenticate(username=username,password=password)
-        # As it returns None if credentials are invalid
+
+    username = request.data.get("username")
+    password = request.data.get("password")
+
+    if not username or not password:
+        return Response({
+            "Success": False,
+            "details": "Username and password are required"
+        }, status=400)
+
+    user = authenticate(
+        username=username,
+        password=password
+    )
+
     if user is None:
-            return Response({"Success":False,
-                            "details":"Credentials are invalid"},status=401)
-            audit=AuditLog()
-            audit.user(f"User{request.user}")
-            audit.save()
-            audit.action("User Entred Invalid Credentials.")
-            audit.save()
-            audit.related_object("Login")
-            audit.save()
-    
-    else:
-            refresh=RefreshToken.for_user(user)
-            access=refresh.access_token
-            return Response({"Success":True,
-                             "access":str(access),
-                             "refresh":str(refresh)},status=200)
-            audit=AuditLog()
-            audit.user(f"User{request.user}")
-            audit.save()
-            audit.action("User Requested for Log In.")
-            audit.save()
-            audit.related_object("LogIn")
-            audit.save()
-        
+        return Response({
+            "Success": False,
+            "details": "Credentials are invalid"
+        }, status=401)
+
+    refresh = RefreshToken.for_user(user)
+    access = refresh.access_token
+
+    return Response({
+        "Success": True,
+        "access": str(access),
+        "refresh": str(refresh)
+    }, status=200)
+
+
+# Employee's Assigned Tasks
 @api_view(["GET"])
-@permission_classes([IsAuthenticated,IsEmployee])
-def show_tasks(request,id):
-    audit=AuditLog()
-    audit.user(f"User{request.user}")
-    audit.save()
-    audit.action("Employee requested to show their assigned tasks")
-    audit.save()
-    audit.related_object("Show Assigned Tasks")
-    audit.save()
-    
-     
-    task=Task.objects.filter(user_task=request.user)
-    serializer=TaskSerializer(task,many=True)
+@permission_classes([IsAuthenticated, IsEmployee])
+def show_tasks(request, id=None):
 
-    return Response({"Succuess":True,
-                     "data":serializer.data},
-                     status=200)
-    
-      
+    task = Task.objects.filter(
+        user_task=request.user,
+        company_tasks=request.user.company
+    )
 
- # Allow only Admins to Create Users(Task 2)
-@api_view(["POST"])
-@permission_classes([IsAuthenticated,IsAdmin])
-def create_users(request):
-
-    serializer=UserSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"Success":True,
-                        "data":serializer.data},status=201)
-        audit=AuditLog()
-        audit.user(f"User{request.user}")
-        audit.save()
-        audit.action("Admin Created User")
-        audit.save()
-        audit.related_object("Create User")
-        audit.save()
-    return Response({"Success":False,
-                     "data":serializer.errors},status=400)
-# allow Admins only to Delete Users(Task 2)
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticated,IsAdmin])
-def delete_users(request,id):
-      try:
-     
-        delete_user=User.objects.get(id=id)
-        delete_user.delete()
-        return Response({"Success":True,
-                       "data":"user deleted successfully"},status=200)
-      except User.DoesNotExist:
-          return Response({"Success":False,
-                           "data":"User does not exist"},status=404
-
-                           )
-
-@api_view(["GET"])
-def get_rooms(request):
-
-    rooms = request.user.room.all()
-
-    serializer = RoomSerializer(rooms, many=True)
+    serializer = TaskSerializer(
+        task,
+        many=True
+    )
 
     return Response({
         "Success": True,
         "data": serializer.data
     }, status=200)
+
+
+# Only Admins can Create Users
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def create_users(request):
+
+    serializer = UserSerializer(data=request.data)
+
+    if serializer.is_valid():
+
+        serializer.save(
+            company=request.user.company
+        )
+
+        return Response({
+            "Success": True,
+            "data": serializer.data
+        }, status=201)
+
+    return Response({
+        "Success": False,
+        "data": serializer.errors
+    }, status=400)
+
+
+# Only Admins can Delete Users
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def delete_users(request, id):
+
+    try:
+        delete_user = User.objects.get(
+            id=id,
+            company=request.user.company
+        )
+
+        delete_user.delete()
+
+        return Response({
+            "Success": True,
+            "data": "user deleted successfully"
+        }, status=200)
+
+    except User.DoesNotExist:
+        return Response({
+            "Success": False,
+            "data": "User does not exist"
+        }, status=404)
+
+
+# Get Rooms
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_rooms(request):
+
+    rooms = Room.objects.filter(workspace_id=request.GET.get("workspace"))
+
+    serializer = RoomSerializer(
+        rooms,
+        many=True
+    )
+
+    return Response({
+        "Success": True,
+        "data": serializer.data
+    }, status=200)
+
+
+# Create Note
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_note(request):
-    serializer=NoteSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"Success":True,
-                         "response":"Note created successfully"},status=201)
-    else:
-        return Response({"Success":False,
-                         "resonse":"Invalid data sent"},status=400)
 
+    serializer = NoteSerializer(
+        data=request.data
+    )
+
+    if serializer.is_valid():
+
+        serializer.save(
+            user=request.user
+        )
+
+        return Response({
+            "Success": True,
+            "response": "Note created successfully"
+        }, status=201)
+
+    return Response({
+        "Success": False,
+        "response": serializer.errors
+    }, status=400)
+
+
+# Update Note
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
-def update_note(request):
-    serializer=NoteSerializer(data=request.data)
-    if serializer.is_valid():
+def update_note(request, id):
 
-        message=Notes.objects.filter(notes_id=request.user.data.id)
-        message=serializer
-        message.save()
+    try:
+        note = Notes.objects.get(
+            id=id,
+            user=request.user
+        )
 
+        serializer = NoteSerializer(
+            note,
+            data=request.data
+        )
+
+        if serializer.is_valid():
+
+            serializer.save(
+                user=request.user
+            )
+
+            # Get the channel layer
+            channel_layer = get_channel_layer()
+
+            # Broadcast the updated note
+            async_to_sync(channel_layer.group_send)(
+                "notes",
+                {
+                    "type": "note_update",
+                    "data": serializer.data
+                }
+            )
+
+            return Response({
+                "Success": True,
+                "data": serializer.data
+            }, status=200)
+
+        return Response({
+            "Success": False,
+            "data": serializer.errors
+        }, status=400)
+
+    except Notes.DoesNotExist:
+        return Response({
+            "Success": False,
+            "message": "Note not found."
+        }, status=404)
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def shownotes(request):
+    get_notes=Notes.objects.filter(room=request.user.room_id)
+    return Response({
+        "Success":True,
+        "data":get_notes},
+        status=200)
+
+
+    
+# Save Version History
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def savehistory(request):
-    serializer=VersionSerializer(data=request.data)
+
+    serializer = VersionSerializer(
+        data=request.data
+    )
+
     if serializer.is_valid():
         serializer.save()
 
-    
+        return Response({
+            "Success": True,
+            "data": serializer.data
+        }, status=201)
 
+    return Response({
+        "Success": False,
+        "data": serializer.errors
+    }, status=400)
 
+@api_view(["GET"])
+def show_companies(request):
 
+    companies = Company.objects.all()
 
+    serializer = CompanySerializer(companies, many=True)
 
+    return Response({
+        "Success": True,
+        "data": serializer.data
+    }, status=200)
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_workspace(request):
+    serializer=WorkSpaceSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "Success":True,
+            "data":"Workspace Created Successfully"
+        },status=201)
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def show_workspaces(request):
+    workspace=WorkSpace.objects.all()
+    serializer=WorkSpaceSerializer(workspace,many=True)
+    return Response(
+        {"Success":True,
+        "data":serializer.data},status=200
+    )
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_room(request):
 
+    serializer = RoomSerializer(data=request.data)
 
+    if serializer.is_valid():
+        serializer.save()
 
+        return Response({
+            "Success": True,
+            "data": "Room created successfully"
+        }, status=201)
 
-            
-        
+    return Response({
+        "Success": False,
+        "data": serializer.errors
+    }, status=400)

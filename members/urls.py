@@ -25,5 +25,12 @@ urlpatterns = [
     # Users
     path("users/create/", views.create_users, name="create_users"),
     path("users/delete/<int:id>/", views.delete_users, name="delete_users"),
-    path("users/getrooms/",views.get_rooms,name="get_rooms")
+    path("users/getrooms/",views.get_rooms,name="get_rooms"),
+
+    # Companies
+    path("showcompanies/",views.show_companies),
+    path("createworkspaces/",views.create_workspace),
+    path("showworkspaces/",views.show_workspaces),
+    path("createroom/",views.create_room),
+    path("showrooms/",views.get_rooms)
 ]

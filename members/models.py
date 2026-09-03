@@ -3,94 +3,115 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Company(models.Model):
-    
-    company_choices=[("G","Google"),
-                     ("M","Microsoft"),
-                     ("A","Amazon")]
-    company_name=models.CharField(max_length=25,choices=company_choices)
+
+    company_choices = [("G", "Google"),
+                      ("M", "Microsoft"),
+                      ("A", "Amazon")]
+    company_name = models.CharField(max_length=25, choices=company_choices)
 
     def __str__(self):
         return self.company_name
-    
+
 
 class Message(models.Model):
-    sender=models.ForeignKey("User",on_delete=models.CASCADE)
-    content=models.CharField(max_length=1000)
+    sender = models.ForeignKey("User", on_delete=models.CASCADE)
+    content = models.CharField(max_length=1000)
     timestamp = models.DateTimeField(auto_now_add=True)
-    room=models.ForeignKey("Room",on_delete=models.CASCADE)
+    room = models.ForeignKey("Room", on_delete=models.CASCADE)
+
 
 class Room(models.Model):
-    room_name=models.CharField(max_length=100)
+    room_name = models.CharField(max_length=100)
+    workspace=models.ForeignKey("WorkSpace",on_delete=models.CASCADE)
 
 
 class Project(models.Model):
-    status_choices=[("CP", "Completed"),
-                    ("NS","Not Started"),
-                    ("IP","In Progress"),
-                    ("CA","Cancelled"),
-                    ("D","Deleted")
-                    ]
-    name= models.CharField(max_length=100)
-    description=models.CharField(max_length=500)
-    start_date=models.IntegerField()
-    status=models.CharField(max_length=2,choices=status_choices)
-    company_projects=models.ForeignKey(Company,on_delete=models.CASCADE,null=True)
+    status_choices = [("CP", "Completed"),
+                      ("NS", "Not Started"),
+                      ("IP", "In Progress"),
+                      ("CA", "Cancelled"),
+                      ("D", "Deleted")
+                      ]
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=500)
+    start_date = models.IntegerField()
+    status = models.CharField(max_length=2, choices=status_choices)
+    company_projects = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return self.name
 
-class Note(models.Model):
-    note=models.CharField(max_length=500)
-    workspace=models.ForeignKey(Room,on_delete=models.CASCADE)
+
+
+
 
 class Task(models.Model):
-    status_choices=[("CP", "Completed"),
-                    ("NS","Not Started"),
-                    ("IP","In Progress"),
-                    ("D","Deleted")
-                    
-                    ]
-    name=models.CharField(max_length=100)
+    status_choices = [("CP", "Completed"),
+                      ("NS", "Not Started"),
+                      ("IP", "In Progress"),
+                      ("D", "Deleted")
+                      ]
+    name = models.CharField(max_length=100)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    company_tasks=models.ForeignKey(Company,on_delete=models.CASCADE,null=True,blank=True)
-    user_task=models.ForeignKey("User",on_delete=models.CASCADE,null=True)
-    description=models.CharField(max_length=100)
-    start_date=models.IntegerField()
-    status=models.CharField(max_length=2,choices=status_choices)
+    company_tasks = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    user_task = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    description = models.CharField(max_length=100)
+    start_date = models.IntegerField()
+    status = models.CharField(max_length=2, choices=status_choices)
 
     def __str__(self):
         return self.name
-    
 
 
-
-    
 class User(AbstractUser):
-    Role_Choices=[("admin","Admin"),
-                  ("employee","Empoyee"),
-                  ("manager","Manager")]
-    role=models.CharField(max_length=20,choices=Role_Choices)
-    company = models.ForeignKey(Company,on_delete=models.CASCADE)
+    Role_Choices = [("admin", "Admin"),
+                    ("employee", "Empoyee"),
+                    ("manager", "Manager")]
+    role = models.CharField(max_length=20, choices=Role_Choices)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
 
 class AuditLog(models.Model):
-    user=models.CharField(max_length=30)
-    action=models.CharField(max_length=30)
-    timestamp=models.DateTimeField(auto_now=True)
-    related_object=models.CharField(max_length=30)
-    
+    user = models.CharField(max_length=30)
+    action = models.CharField(max_length=30)
+    timestamp = models.DateTimeField(auto_now=True)
+    related_object = models.CharField(max_length=30)
+
+
 class WorkSpace(models.Model):
-    name=models.CharField(max_length=50)
+    name = models.CharField(max_length=50)
+
 
 class Notes(models.Model):
-    title=models.CharField(max_length=100)
-    content=models.TextField()
-    workspace=models.ForeignKey(WorkSpace,on_delete=models.CASCADE)
-    room=models.ForeignKey(Room,on_delete=models.CASCADE)
-    user=models.ForeignKey(User,on_delete=models.CASCADE)
-    message=models.ForeignKey(Message,on_delete=models.CASCADE)
-    
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    workspace = models.ForeignKey(WorkSpace, on_delete=models.CASCADE)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.ForeignKey(Message, on_delete=models.CASCADE)
+
 
 class VersionHistory(models.Model):
-    notes=models.ForeignKey(Notes,on_delete=models.CASCADE)
-    title=models.CharField()
-    content=models.TextField()
+    notes = models.ForeignKey(Notes, on_delete=models.CASCADE)
+    title = models.CharField(max_length=100)
+    content = models.TextField()

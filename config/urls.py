@@ -39,7 +39,12 @@ urlpatterns = [
     # showtasks endpoint is for employee assigned tasks only.
     path("showtasks/<int:id>/", views.show_tasks, name="show_tasks"),
     path("createusers/", views.create_users, name="create_users"),
-    path("deleteusers/<int:id>/", views.delete_users, name="delete_users")
+    path("deleteusers/<int:id>/", views.delete_users, name="delete_users"),
+    path("showcompanies/",views.show_companies),
+    path("createworkspaces/",views.create_workspace),
+    path("showworkspaces/",views.show_workspaces),
+    path("createroom/",views.create_room),
+    path("showrooms/",views.get_rooms)
     
             
     ]

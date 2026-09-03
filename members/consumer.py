@@ -1,121 +1,93 @@
+
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from .models import Message
 import json
 
-from members.models import Message, Room
-from channels.db import database_sync_to_async
 
-
-class MyConsumer(AsyncWebsocketConsumer):
+class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        self.group_id = self.scope["url_route"]["kwargs"]["group_name"]
-        # Calling check_room function to fetch the user requested rom from database
-        self.room = await self.check_room()
+        print("CONNECT STARTED")
 
-        await self.channel_layer.group_add(
-            self.group_id,
-            self.channel_name
-        )
+        try:
+            self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
+            print("ROOM ID:", self.room_id)
 
-        
-        await self.accept()
+            self.room_group_name = f"chat_{self.room_id}"
+            print("GROUP:", self.room_group_name)
 
-        # Get the last 20 messages from  this room.
-        previous_messages = await self.get_messages()
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
 
-        
-        await self.send(
-            text_data=json.dumps({
-                "type": "previous_messages",
-                "messages": previous_messages
-            })
-        )
+            print("GROUP ADDED")
 
-    
-    @database_sync_to_async
-    def check_room(self):
-        return Room.objects.get(id=self.group_id)
-     # get_messages function gets latest 20 messages from the user joined room
-    @database_sync_to_async
-    def get_messages(self):
+            await self.accept()
 
-        
-        messages = Message.objects.filter(
-            room=self.room
-        ).order_by("-timestamp")[:20]
+            print("CONNECTION ACCEPTED")
 
-        # Using list comprehension to iterate over the messages list
-        return [
-            {
-                "message": message.content,
-                "sender": message.sender.username,
-                "timestamp": str(message.timestamp)
-            }
-            for message in messages
-        ]
-     # Saving new messages in datbase.
-    @database_sync_to_async
-    def save_message(self, user, message):
+            messages = await self.get_last_messages()
+            print("MESSAGES LOADED:", messages)
 
-        
-        Message.objects.create(
-            sender=user,
-            content=message,
-            room=self.room
-        )
+            for message in reversed(messages):
+                await self.send(
+                    text_data=message.content
+                )
 
-    
+            print("CONNECT FINISHED")
+            print("CONSUMER STILL RUNNING")
+
+        except Exception as e:
+            print("CONNECT ERROR:", repr(e))
+            raise
 
     async def receive(self, text_data):
-
-        # Converting JSON into Python's Dictionary
+        # Convert JSON string into Python dictionary
         data = json.loads(text_data)
 
+        # Extract the actual message
         message = data["message"]
-        user = self.scope["user"]
-        await self.save_message(user, message)
 
-        # Broadcast new message to everyone currently in this room.
+        # Save message in database
+        await database_sync_to_async(Message.objects.create)(
+            sender=self.scope["user"],
+            content=message,
+            room_id=self.room_id
+        )
+
+        # Send message to everyone in this room
         await self.channel_layer.group_send(
-            self.group_id,
+            self.room_group_name,
             {
                 "type": "chat_message",
                 "message": message
             }
         )
 
-    
-
     async def chat_message(self, event):
-        message = event["message"]
         await self.send(
-            text_data=json.dumps({
-                "message": message
-            })
+            text_data=event["message"]
         )
 
+    async def disconnect(self, close_code):
+        print("========== DISCONNECT ==========")
+        print("CLOSE CODE:", close_code)
+        print("ROOM:", self.room_id)
 
-    async def user_joined(self, event):
-
-        await self.send(
-
-            text_data=json.dumps({
-
-                "type": "user_joined",
-                "user_id": event["user_id"],
-                "username": event["username"
-                                  }
-
-# Writing function to check offline 
-async def user_left(self, event):
-
-        await self.send(
-
-            text_data=json.dumps({
-                "type": "user_left",
-                  "user_id": event["user_id"],
-                "username": event["username"]
-
-            })
-
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
         )
+
+        print("========== DISCONNECT END ==========")
+
+    @database_sync_to_async
+    def get_last_messages(self):
+        return list(
+            Message.objects
+            .filter(room_id=self.room_id)
+            .order_by("-timestamp")[:20]
+        )
+

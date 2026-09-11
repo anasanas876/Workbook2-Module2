@@ -591,3 +591,6 @@ def create_room(request):
         "Success": False,
         "data": serializer.errors
     }, status=400)
+
+def accept_files(request):
+    return render(request,'index.html')

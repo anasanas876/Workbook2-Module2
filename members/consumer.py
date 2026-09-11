@@ -17,10 +17,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name = f"chat_{self.room_id}"
             print("GROUP:", self.room_group_name)
 
-            await self.channel_layer.group_add(
-                self.room_group_name,
-                self.channel_name
-            )
+            #await self.channel_layer.group_add(
+                #self.room_group_name,
+                #self.channel_name
+            #)
 
             print("GROUP ADDED")
 
@@ -36,9 +36,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     text_data=message.content
                 )
 
-            print("CONNECT FINISHED")
-            print("CONSUMER STILL RUNNING")
-
+            
+            
+        # Adding exception to identify a cause of self disconnection
         except Exception as e:
             print("CONNECT ERROR:", repr(e))
             raise
@@ -58,13 +58,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         # Send message to everyone in this room
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "message": message
-            }
-        )
+        #await self.channel_layer.group_send(
+           # self.room_group_name,
+           # {
+                #"type": "chat_message",
+                #"message": message
+            #}
+            # )
 
     async def chat_message(self, event):
         await self.send(
@@ -72,22 +72,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def disconnect(self, close_code):
-        print("========== DISCONNECT ==========")
+        print("DISCONNECT METHOD CALLED", close_code)
         print("CLOSE CODE:", close_code)
         print("ROOM:", self.room_id)
 
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        #await self.channel_layer.group_discard(
+           # self.room_group_name,
+           # self.channel_name
+       # )
 
-        print("========== DISCONNECT END ==========")
-
+        
+   # Getting Last 20 messages from the specific room
     @database_sync_to_async
     def get_last_messages(self):
         return list(
             Message.objects
-            .filter(room_id=self.room_id)
+            .filter(room=self.room_id)
             .order_by("-timestamp")[:20]
         )
 

@@ -33,5 +33,5 @@ urlpatterns = [
     path("showworkspaces/",views.show_workspaces),
     path("createroom/",views.create_room),
     path("showrooms/",views.get_rooms),
-    path("acceptfiles/",views.accept_files)
+    path("acceptfiles/",views.accept_files),
 ]

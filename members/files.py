@@ -12,12 +12,12 @@ import nltk
 # Downloading all models
 
 
-nltk.data.path = [
-    path for path in nltk.data.path
-    if not path.startswith("E:\\")
-]
+#nltk.data.path = [
+    #path for path in nltk.data.path
+    #if not path.startswith("E:\\")
+#]
 
-nltk.download("all")
+
 file_path = input("Enter your File Path: ")
 
 try:
@@ -32,10 +32,10 @@ try:
         extension = check_file_path.extension
         mime = check_file_path.mime
 
-        if extension in ("pdf", "docx"):
-            print(f"File type is {extension}")
+        
 
         if extension == "pdf":
+                
                 reader = PdfReader(file_path)
                 extracted_text=""
                 for page in reader.pages:
@@ -44,17 +44,61 @@ try:
 
                 
         elif extension=="docx":
-            get_content=Document(file_path)
-            print("Number of paragraphs:", len(get_content.paragraphs))
-            for paragraph in get_content.paragraphs:
-                text+=paragraph.text + "\n"
-                print(text)
+            from docx import Document
+
+get_content = Document(file_path)
+
+skills = [
+    "Python", "Django", "SQL", "AWS", "React",
+    "Javascript", "MongoDB", "Git", "Artificial Intelligence",
+    "Data Science", "Azure"
+]
+
+detected_skills = []
+
+skills_section = [
+    "Skills",
+    "Technical Skills",
+    "Professional Skills"
+]
+
+print("Number of paragraphs:", len(get_content.paragraphs))
+
+paragraphs = get_content.paragraphs
+
+for i, paragraph in enumerate(paragraphs):
+
+    if (
+        paragraph.style.name == "Heading 1"
+        and paragraph.text.strip() in skills_section
+    ):
+
+        for next_paragraph in paragraphs[i + 1:]:
+
+            
+            if next_paragraph.style.name.startswith("Heading"):
+                break
+
+            
+            for skill in skills:
+
+                if skill.lower() in next_paragraph.text.lower():
+                    detected_skills.append(skill)
+
+            print("Detected Skills:", detected_skills)
+                    
+                 
+
+            print(paragraph.text, ">", paragraph.style.name)
+
+            text+=paragraph.text + "\n"
+            print(text)
             print(len(text))
             # Counting Words 
-            print(len(text.spit()))
-            #
-            text=text.lowercase.strip()
-            # Removing Punctuation
+            print(len(text.split()))
+            
+            text=text.lower().strip()
+            #Removing Punctuation
             
 
             cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '',text)
@@ -65,31 +109,35 @@ try:
             print(tokens)
 
             # Loading StopWords
-            stop_words={stopwords.words('english')}
-            # Using List Comprehension to remove common stopwords
+
+            stop_words = set(stopwords.words('english'))
+             #Using List Comprehension to remove common stopwords
             filtered_tokens=[word for word in tokens if word not in stop_words]
             print(filtered_tokens)
 
-            # Creating Object for Word Net 
-            lemmitizer=WordNetLemmatizer()
-            # Applying Lemmitization:
-            lemmitized=[lemmitizer.lemmitize(word) for word in filtered_tokens]
+            #Creating Object for Word Net 
+            lemmatizer = WordNetLemmatizer()
+            lemmatized = [lemmatizer.lemmatize(word) for word in filtered_tokens]
 
-            # Creating Skills List
-            skills=["Python","Django","SQL","AWS","React","Javascript","MongoDB","Git","Artifical Intelligence","DataScience","Azure"]
+            
+            
+             #Making list consistent with Resume.
+            skills=[skill.lower() for skill in skills]
             skill_count = 0
+            detected_skills=[]
 
-            for skill in lemmitized:
+            for skill in lemmatized:
              if any(re.search(r'\b' + re.escape(skill) + r'\b', s) for s in skills):
-              detected_skills+=skill
+              detected_skills.append(skill)
               skill_count += 1
               # Returning detected skills as a list
-              skills_list=list(detected_skills)
+              
 
-            print(skill_count)
-        # Using NER 
+            #print(skill_count)
+        
             nlp=spacy.load('en_core_web_sm')
-            doc=nlp(lemmitized)
+            doc=nlp(text)
+            print(doc.ents)
 
 
 

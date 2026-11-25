@@ -1,0 +1,12 @@
+# Core Django & REST API
+Django
+djangorestframework
+djangorestframework-simplejwt
+PyJWT
+django-cors-headers
+channels
+channels-redis
+daphne
+redis
+whitenoise
+python-dotenv

@@ -32,6 +32,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "workbook2-module2-2.onrender.com",
+    ".onrender.com",
 ]
 
 

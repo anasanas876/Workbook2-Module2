@@ -4,8 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Project, Task, User, Room, Notes, VersionHistory,Company,WorkSpace
+from .models import Project, Task, User, Room, Notes, VersionHistory,Company,WorkSpace,Message
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.decorators import throttle_classes
 from .serializer import (
@@ -17,7 +18,8 @@ from .serializer import (
     NoteSerializer,
     VersionSerializer,
     CompanySerializer,
-    WorkSpaceSerializer
+    WorkSpaceSerializer,
+    MessageSerializer
 )
 from django.contrib.auth import authenticate
 
@@ -32,7 +34,7 @@ class LoginThrottle(UserRateThrottle):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsManager | IsAdmin])
+@permission_classes([IsAuthenticated])
 def project_list(request):
 
     filtered_projects = Project.objects.filter(
@@ -307,37 +309,40 @@ def signup(request):
 
 # Login
 @api_view(["POST"])
+         
+@permission_classes([AllowAny])      
 @throttle_classes([LoginThrottle])
-def login(request):
-
+def login_view(request):
     username = request.data.get("username")
     password = request.data.get("password")
 
     if not username or not password:
-        return Response({
-            "Success": False,
-            "details": "Username and password are required"
-        }, status=400)
+        return Response(
+            {"Success": False, "details": "Username and password are required"},
+            status=400,
+        )
 
-    user = authenticate(
-        username=username,
-        password=password
-    )
+    user = authenticate(username=username, password=password)
 
     if user is None:
-        return Response({
-            "Success": False,
-            "details": "Credentials are invalid"
-        }, status=401)
+        return Response(
+            {"Success": False, "details": "Credentials are invalid"},
+            status=401,
+        )
 
     refresh = RefreshToken.for_user(user)
     access = refresh.access_token
 
-    return Response({
-        "Success": True,
-        "access": str(access),
-        "refresh": str(refresh)
-    }, status=200)
+    return Response(
+        {
+            "Success": True,
+            "access": str(access),
+            "refresh": str(refresh),
+            "company_id": user.company_id,   
+            "role": user.role,               
+        },
+        status=200,
+    )
 
 
 # Employee's Assigned Tasks
@@ -469,6 +474,7 @@ def update_note(request, id):
             note,
             data=request.data
         )
+        room_id=f"chat_{note.room.id}"
 
         if serializer.is_valid():
 
@@ -481,10 +487,10 @@ def update_note(request, id):
 
             # Broadcast the updated note
             async_to_sync(channel_layer.group_send)(
-                "notes",
+                room_id,
                 {
                     "type": "note_update",
-                    "data": serializer.data
+                    "text": serializer.data
                 }
             )
 
@@ -506,15 +512,35 @@ def update_note(request, id):
 
 
 
+@api_view(["GET"])
+def showmessages(request, id):
+    room = Room.objects.get(id=id)
+    messages = Message.objects.filter(room_id=id).order_by("timestamp")[:20]
+
+    return Response({
+        "room": {"id": room.id, "name": room.room_name},
+        "messages": list(messages.values("id", "sender", "content", "timestamp"))[::-1],
+        "notes": list(Notes.objects.filter(room_id=id)
+                  .values("id", "content")),
+ }, status=200)
+   
+    
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def shownotes(request):
-    get_notes=Notes.objects.filter(room=request.user.room_id)
+
+    room_id = request.GET.get("room")
+
+    notes = Notes.objects.filter(room_id=room_id)
+
+    serializer = NoteSerializer(notes, many=True)
+
     return Response({
-        "Success":True,
-        "data":get_notes},
-        status=200)
+        "Success": True,
+        "data": serializer.data
+    })
 
 
     

@@ -4,9 +4,9 @@ from django.contrib.auth.models import AbstractUser
 
 class Company(models.Model):
 
-    company_choices = [("G", "Google"),
-                      ("M", "Microsoft"),
-                      ("A", "Amazon")]
+    company_choices = [("Google", "G"),
+                      ("Microsoft", "M"),
+                      ("Amazon", "A")]
     company_name = models.CharField(max_length=25, choices=company_choices)
 
     def __str__(self):
@@ -23,6 +23,9 @@ class Message(models.Model):
 class Room(models.Model):
     room_name = models.CharField(max_length=100)
     workspace=models.ForeignKey("WorkSpace",on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.room_name
 
 
 class Project(models.Model):
@@ -89,6 +92,8 @@ class User(AbstractUser):
         null=True,
         blank=True
     )
+    room=models.ForeignKey(Room,on_delete=models.CASCADE,null=True)
+    workspace=models.ForeignKey("WorkSpace",on_delete=models.CASCADE,null=True)
 
 
 class AuditLog(models.Model):
@@ -101,17 +106,35 @@ class AuditLog(models.Model):
 class WorkSpace(models.Model):
     name = models.CharField(max_length=50)
 
+    def __str__(self):
+            return self.name
+
 
 class Notes(models.Model):
+
     title = models.CharField(max_length=100)
     content = models.TextField()
-    workspace = models.ForeignKey(WorkSpace, on_delete=models.CASCADE)
-    room = models.ForeignKey(Room, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.ForeignKey(Message, on_delete=models.CASCADE)
 
+    workspace = models.ForeignKey(
+        WorkSpace,
+        on_delete=models.CASCADE
+    )
+
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name="notes"
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
 
 class VersionHistory(models.Model):
     notes = models.ForeignKey(Notes, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     content = models.TextField()
+
+
+

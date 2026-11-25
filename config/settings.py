@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from datetime import timedelta
+import os
 
 
 from pathlib import Path
@@ -157,14 +158,8 @@ EMAIL_HOST_USER = 'mymail@gmail.com'
 EMAIL_HOST_PASSWORD = 'your_app_password'     
 DEFAULT_FROM_EMAIL = 'mymail@gmail.com'
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
-    },
-}
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+CHANNEL_LAYERS = os.getenv("RedisURL")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),

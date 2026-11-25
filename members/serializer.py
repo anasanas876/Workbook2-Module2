@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import Project, Task, User, Room, Notes, VersionHistory,Company,WorkSpace
+from .models import Project, Task, User, Room, Notes, VersionHistory,Company,WorkSpace,Message
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -88,6 +88,13 @@ class VersionSerializer(serializers.ModelSerializer):
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model=Company
+        fields="__all__"
+
+
+class MessageSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model=Message
         fields="__all__"
 
 class WorkSpaceSerializer(serializers.ModelSerializer):

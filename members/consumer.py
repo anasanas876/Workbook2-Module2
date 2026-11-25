@@ -1,93 +1,92 @@
-
+import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Message
-import json
+import traceback
+
+from .models import Notes, Room
+
+def note_to_dict(note):
+    return {"id": note.id, "title": note.title, "content": note.content}
 
 
-class ChatConsumer(AsyncWebsocketConsumer):
-
+class NotesConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print("CONNECT STARTED")
+     print("CONNECT CALLED", self.scope["path"])
+     try:
+        self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
+        self.group = f"room_notes_{self.room_id}"
+        await self.channel_layer.group_add(self.group, self.channel_name)
+        print("GROUP ADDED")
+        await self.accept()
+        print("ACCEPTED")
+     except Exception as e:
+        print("CONNECT FAILED:", repr(e))
+        raise
+    # async def connect(self):
+    #     print("CONNECT CALLED", self.scope["path"])
+    #     self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
+    #     self.group = f"room_notes_{self.room_id}"
+    #     await self.channel_layer.group_add(self.group, self.channel_name)
+    #     await self.accept()
 
-        try:
-            self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
-            print("ROOM ID:", self.room_id)
-
-            self.room_group_name = f"chat_{self.room_id}"
-            print("GROUP:", self.room_group_name)
-
-            #await self.channel_layer.group_add(
-                #self.room_group_name,
-                #self.channel_name
-            #)
-
-            print("GROUP ADDED")
-
-            await self.accept()
-
-            print("CONNECTION ACCEPTED")
-
-            messages = await self.get_last_messages()
-            print("MESSAGES LOADED:", messages)
-
-            for message in reversed(messages):
-                await self.send(
-                    text_data=message.content
-                )
-
-            
-            
-        # Adding exception to identify a cause of self disconnection
-        except Exception as e:
-            print("CONNECT ERROR:", repr(e))
-            raise
+    async def disconnect(self, code):
+        print("Disconnected:", code)
+        await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def receive(self, text_data):
-        # Convert JSON string into Python dictionary
+        print("RECEIVED:", text_data)
         data = json.loads(text_data)
+        action = data.get("action")
+        content = (data.get("content") or "").strip()
+        if not content:
+            return
 
-        # Extract the actual message
-        message = data["message"]
+        if action == "create":
+            note = await self.create_note(content)
+            event = "created"
+        elif action == "edit":
+            note = await self.edit_note(data.get("id"), content)
+            event = "updated"
+            if note is None:
+                return
+        else:
+            return
 
-        # Save message in database
-        await database_sync_to_async(Message.objects.create)(
-            sender=self.scope["user"],
-            content=message,
-            room_id=self.room_id
+        # broadcast to everyone in the room (including the sender)
+        await self.channel_layer.group_send(
+            self.group, {"type": "note.event", "event": event, "note": note}
         )
 
-        # Send message to everyone in this room
-        #await self.channel_layer.group_send(
-           # self.room_group_name,
-           # {
-                #"type": "chat_message",
-                #"message": message
-            #}
-            # )
+    async def note_event(self, event):
+        await self.send(text_data=json.dumps({"event": event["event"], "note": event["note"]}))
 
-    async def chat_message(self, event):
-        await self.send(
-            text_data=event["message"]
-        )
+    
 
-    async def disconnect(self, close_code):
-        print("DISCONNECT METHOD CALLED", close_code)
-        print("CLOSE CODE:", close_code)
-        print("ROOM:", self.room_id)
-
-        #await self.channel_layer.group_discard(
-           # self.room_group_name,
-           # self.channel_name
-       # )
-
-        
-   # Getting Last 20 messages from the specific room
     @database_sync_to_async
-    def get_last_messages(self):
-        return list(
-            Message.objects
-            .filter(room=self.room_id)
-            .order_by("-timestamp")[:20]
-        )
+    def create_note(self, content):
+     try:
+        room = Room.objects.get(id=self.room_id)
+        user = self.scope.get("user")
+        if not (user and user.is_authenticated):
+         user = None
 
+        note = Notes.objects.create(
+        title=content[:50],
+        content=content,
+        room=room,
+        workspace=room.workspace,
+        user=user,
+)
+        return note_to_dict(note)
+     except Exception:
+        traceback.print_exc()
+        raise
+    @database_sync_to_async
+    def edit_note(self, note_id, content):
+        try:
+            note = Notes.objects.get(id=note_id, room_id=self.room_id)
+        except Notes.DoesNotExist:
+            return None
+        note.content = content
+        note.save()
+        return note_to_dict(note)

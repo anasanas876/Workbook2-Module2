@@ -76,6 +76,18 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://workbook3-next-js-puce.vercel.app",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://workbook3-next-js-puce.vercel.app",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'config.urls'

@@ -158,8 +158,14 @@ EMAIL_HOST_USER = 'mymail@gmail.com'
 EMAIL_HOST_PASSWORD = 'your_app_password'     
 DEFAULT_FROM_EMAIL = 'mymail@gmail.com'
 
-CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
-CHANNEL_LAYERS = os.getenv("RedisURL")
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.getenv("Redis_URL")],
+        },
+    },
+}
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),

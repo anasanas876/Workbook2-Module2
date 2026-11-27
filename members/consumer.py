@@ -53,9 +53,13 @@ class NotesConsumer(AsyncWebsocketConsumer):
             return
 
         # broadcast to everyone in the room (including the sender)
-        await self.channel_layer.group_send(
-            self.group, {"type": "note.event", "event": event, "note": note}
-        )
+        try:
+            await self.channel_layer.group_send(
+                self.group, {"type": "note.event", "event": event, "note": note}
+            )
+        except Exception as e:
+            await self.send(text_data=json.dumps({"error": repr(e)}))
+
 
     async def note_event(self, event):
         await self.send(text_data=json.dumps({"event": event["event"], "note": event["note"]}))
